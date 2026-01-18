@@ -1,4 +1,4 @@
-"""Caching layer for OpenAI responses."""
+"""Caching layer for Claude responses."""
 
 import hashlib
 import time
@@ -9,12 +9,12 @@ from collections import OrderedDict
 logger = logging.getLogger(__name__)
 
 
-class OpenAICache:
-    """LRU cache for OpenAI responses with TTL."""
+class ClaudeCache:
+    """LRU cache for Claude responses with TTL."""
     
     def __init__(self, max_size: int = 1000, ttl: int = 3600):
         """
-        Initialize OpenAI cache.
+        Initialize Claude cache.
         
         Args:
             max_size: Maximum number of cached items

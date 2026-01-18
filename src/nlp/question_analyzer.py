@@ -21,16 +21,16 @@ from .concept_extractor import ConceptExtractor
 
 logger = logging.getLogger(__name__)
 
-# Try to import OpenAI components
+# Try to import Claude components
 try:
-    from ..openai.client import OpenAIClient
-    from ..openai.cache import OpenAICache
-    from ..openai.prompts import get_misconception_detection_prompt
-    OPENAI_AVAILABLE = True
+    from ..claude.client import ClaudeClient
+    from ..claude.cache import ClaudeCache
+    from ..claude.prompts import get_misconception_detection_prompt
+    CLAUDE_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAIClient = None
-    OpenAICache = None
+    CLAUDE_AVAILABLE = False
+    ClaudeClient = None
+    ClaudeCache = None
     get_misconception_detection_prompt = None
 
 
@@ -57,37 +57,37 @@ class QuestionAnalyzer:
             ['cannot', 'incorrect', 'wrong', 'mistake', 'error', 'identify the mistake', 'find the error']
         )
         
-        # Initialize OpenAI support if available
-        self._openai_enabled = False
-        self._openai_client = None
-        self._openai_cache = None
+        # Initialize Claude support if available
+        self._claude_enabled = False
+        self._claude_client = None
+        self._claude_cache = None
         
-        if OPENAI_AVAILABLE:
+        if CLAUDE_AVAILABLE:
             try:
                 with open(config_path, 'r') as f:
-                    openai_config = yaml.safe_load(f).get('openai', {})
+                    claude_config = yaml.safe_load(f).get('claude', {})
                 
-                if openai_config.get('use_openai_misconceptions', False):
-                    self._openai_client = OpenAIClient(
-                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=openai_config.get('timeout', 30),
-                        max_retries=openai_config.get('max_retries', 3)
+                if claude_config.get('use_claude_misconceptions', False):
+                    self._claude_client = ClaudeClient(
+                        api_url=claude_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=claude_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=claude_config.get('timeout', 30),
+                        max_retries=claude_config.get('max_retries', 3)
                     )
                     
-                    if self._openai_client.is_available():
-                        self._openai_enabled = True
-                        self._openai_cache = OpenAICache(
-                            max_size=openai_config.get('cache_max_size', 1000),
-                            ttl=openai_config.get('cache_ttl', 3600)
+                    if self._claude_client.is_available():
+                        self._claude_enabled = True
+                        self._claude_cache = ClaudeCache(
+                            max_size=claude_config.get('cache_max_size', 1000),
+                            ttl=claude_config.get('cache_ttl', 3600)
                         )
-                        logger.info("OpenAI misconception detection enabled")
+                        logger.info("Claude misconception detection enabled")
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI misconception detection: {e}")
+                logger.warning(f"Failed to initialize Claude misconception detection: {e}")
     
-    def _openai_detect_indicators(self, question_text: str) -> Optional[Dict[str, bool]]:
+    def _claude_detect_indicators(self, question_text: str) -> Optional[Dict[str, bool]]:
         """
-        Detect misconception indicators using OpenAI API (internal method).
+        Detect misconception indicators using Claude API (internal method).
         
         Args:
             question_text: Question text to analyze
@@ -95,19 +95,19 @@ class QuestionAnalyzer:
         Returns:
             Dictionary of indicator flags or None if failed
         """
-        if not self._openai_enabled or not self._openai_client or not get_misconception_detection_prompt:
+        if not self._claude_enabled or not self._claude_client or not get_misconception_detection_prompt:
             return None
         
         # Check cache first
-        if self._openai_cache:
+        if self._claude_cache:
             cache_key = f"misconception:{question_text}"
-            cached = self._openai_cache.get(cache_key)
+            cached = self._claude_cache.get(cache_key)
             if cached is not None:
                 return cached
         
         try:
             prompt = get_misconception_detection_prompt(question_text)
-            response = self._openai_client.generate(
+            response = self._claude_client.generate(
                 prompt,
                 max_tokens=256,
                 temperature=0.3
@@ -135,15 +135,15 @@ class QuestionAnalyzer:
                         indicators['compares_approaches'] = 'compare' in question_text.lower() or 'difference' in question_text.lower()
                         
                         # Cache result
-                        if self._openai_cache:
+                        if self._claude_cache:
                             cache_key = f"misconception:{question_text}"
-                            self._openai_cache.set(cache_key, indicators)
+                            self._claude_cache.set(cache_key, indicators)
                         
                         return indicators
                 except json.JSONDecodeError:
                     pass
         except Exception as e:
-            logger.warning(f"OpenAI misconception detection failed: {e}")
+            logger.warning(f"Claude misconception detection failed: {e}")
         
         return None
     
@@ -157,14 +157,14 @@ class QuestionAnalyzer:
         Returns:
             Dictionary of indicator flags
         """
-        # Try OpenAI first if enabled
-        if self._openai_enabled:
+        # Try Claude first if enabled
+        if self._claude_enabled:
             try:
-                openai_indicators = self._openai_detect_indicators(question_text)
-                if openai_indicators is not None:
-                    return openai_indicators
+                claude_indicators = self._claude_detect_indicators(question_text)
+                if claude_indicators is not None:
+                    return claude_indicators
             except Exception as e:
-                logger.warning(f"OpenAI misconception detection failed, falling back to keyword matching: {e}")
+                logger.warning(f"Claude misconception detection failed, falling back to keyword matching: {e}")
         
         # Fallback to keyword-based detection (existing implementation)
         text_lower = str(question_text).lower()

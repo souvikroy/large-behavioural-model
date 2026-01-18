@@ -1,4 +1,4 @@
-"""Prompt templates for OpenAI tasks."""
+"""Prompt templates for Claude tasks."""
 
 import json
 from typing import List, Dict, Any

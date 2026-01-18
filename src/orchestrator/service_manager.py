@@ -24,13 +24,13 @@ from ..training.pipeline import TrainingPipeline
 from ..training.evaluator import ModelEvaluator
 from ..export.model_exporter import ModelExporter
 
-# Try to import OpenAI client
+# Try to import Claude client
 try:
-    from ..openai.client import OpenAIClient
-    OPENAI_AVAILABLE = True
+    from ..claude.client import ClaudeClient
+    CLAUDE_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAIClient = None
+    CLAUDE_AVAILABLE = False
+    ClaudeClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -99,30 +99,30 @@ class ServiceManager:
             service_name: Name of the service to initialize
             data_path: Optional path to data file
         """
-        if service_name == 'openai_client':
-            # Initialize OpenAI client if available
-            if OPENAI_AVAILABLE:
+        if service_name == 'claude_client':
+            # Initialize Claude client if available
+            if CLAUDE_AVAILABLE:
                 try:
                     with open(self.config_path, 'r') as f:
                         config = yaml.safe_load(f)
-                    openai_config = config.get('openai', {})
+                    claude_config = config.get('claude', {})
                     
-                    openai_client = OpenAIClient(
-                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=openai_config.get('timeout', 30),
-                        max_retries=openai_config.get('max_retries', 3)
+                    claude_client = ClaudeClient(
+                        api_url=claude_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=claude_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=claude_config.get('timeout', 30),
+                        max_retries=claude_config.get('max_retries', 3)
                     )
                     
-                    if openai_client.is_available():
-                        self.services['openai_client'] = openai_client
-                        logger.info("OpenAI client initialized successfully")
+                    if claude_client.is_available():
+                        self.services['claude_client'] = claude_client
+                        logger.info("Claude client initialized successfully")
                     else:
-                        logger.info("OpenAI client not available, services will use local processing")
+                        logger.info("Claude client not available, services will use local processing")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize OpenAI client: {e}")
+                    logger.warning(f"Failed to initialize Claude client: {e}")
             else:
-                logger.info("OpenAI module not available")
+                logger.info("Claude module not available")
         
         elif service_name == 'data_loader':
             if data_path is None:

@@ -12,16 +12,16 @@ from ..knowledge_graph.query import KnowledgeGraphQuery
 
 logger = logging.getLogger(__name__)
 
-# Try to import OpenAI components
+# Try to import Claude components
 try:
-    from ..openai.client import OpenAIClient
-    from ..openai.cache import OpenAICache
-    from ..openai.prompts import get_gap_analysis_prompt
-    OPENAI_AVAILABLE = True
+    from ..claude.client import ClaudeClient
+    from ..claude.cache import ClaudeCache
+    from ..claude.prompts import get_gap_analysis_prompt
+    CLAUDE_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAIClient = None
-    OpenAICache = None
+    CLAUDE_AVAILABLE = False
+    ClaudeClient = None
+    ClaudeCache = None
     get_gap_analysis_prompt = None
 
 
@@ -48,31 +48,31 @@ class GapAnalyzer:
         self.competency_predictor = competency_predictor
         self.graph_query = knowledge_graph_query
         
-        # Initialize OpenAI support if available
-        self._openai_enabled = False
-        self._openai_client = None
-        self._openai_cache = None
+        # Initialize Claude support if available
+        self._claude_enabled = False
+        self._claude_client = None
+        self._claude_cache = None
         
-        if OPENAI_AVAILABLE:
+        if CLAUDE_AVAILABLE:
             try:
-                openai_config = self.config.get('openai', {})
-                if openai_config.get('use_openai_misconceptions', False):  # Reuse same flag
-                    self._openai_client = OpenAIClient(
-                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=openai_config.get('timeout', 30),
-                        max_retries=openai_config.get('max_retries', 3)
+                claude_config = self.config.get('claude', {})
+                if claude_config.get('use_claude_misconceptions', False):  # Reuse same flag
+                    self._claude_client = ClaudeClient(
+                        api_url=claude_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=claude_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=claude_config.get('timeout', 30),
+                        max_retries=claude_config.get('max_retries', 3)
                     )
                     
-                    if self._openai_client.is_available():
-                        self._openai_enabled = True
-                        self._openai_cache = OpenAICache(
-                            max_size=openai_config.get('cache_max_size', 1000),
-                            ttl=openai_config.get('cache_ttl', 3600)
+                    if self._claude_client.is_available():
+                        self._claude_enabled = True
+                        self._claude_cache = ClaudeCache(
+                            max_size=claude_config.get('cache_max_size', 1000),
+                            ttl=claude_config.get('cache_ttl', 3600)
                         )
-                        logger.info("OpenAI gap analysis enabled")
+                        logger.info("Claude gap analysis enabled")
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI gap analysis: {e}")
+                logger.warning(f"Failed to initialize Claude gap analysis: {e}")
     
     def analyze_gaps(
         self,
@@ -257,11 +257,11 @@ class GapAnalyzer:
         Returns:
             Dictionary with remediation strategy
         """
-        # Try OpenAI first if enabled
-        if self._openai_enabled and get_gap_analysis_prompt:
+        # Try Claude first if enabled
+        if self._claude_enabled and get_gap_analysis_prompt:
             try:
                 prompt = get_gap_analysis_prompt(gaps)
-                response = self._openai_client.generate(
+                response = self._claude_client.generate(
                     prompt,
                     max_tokens=512,
                     temperature=0.7
@@ -273,22 +273,22 @@ class GapAnalyzer:
                         json_end = response.rfind('}') + 1
                         if json_start >= 0 and json_end > json_start:
                             json_str = response[json_start:json_end]
-                            openai_strategy = json.loads(json_str)
+                            claude_strategy = json.loads(json_str)
                             
                             # Ensure same structure as existing method
                             strategy = {
-                                'priority_areas': openai_strategy.get('priority_areas', []),
-                                'recommended_actions': openai_strategy.get('recommended_actions', []),
-                                'prerequisite_review': openai_strategy.get('prerequisite_review', [])
+                                'priority_areas': claude_strategy.get('priority_areas', []),
+                                'recommended_actions': claude_strategy.get('recommended_actions', []),
+                                'prerequisite_review': claude_strategy.get('prerequisite_review', [])
                             }
                             
                             # Validate and format to match expected structure
                             if strategy['priority_areas'] or strategy['recommended_actions']:
                                 return strategy
                     except json.JSONDecodeError:
-                        logger.warning("Failed to parse OpenAI remediation strategy, using fallback")
+                        logger.warning("Failed to parse Claude remediation strategy, using fallback")
             except Exception as e:
-                logger.warning(f"OpenAI remediation strategy generation failed: {e}, using fallback")
+                logger.warning(f"Claude remediation strategy generation failed: {e}, using fallback")
         
         # Fallback to existing implementation
         strategy = {

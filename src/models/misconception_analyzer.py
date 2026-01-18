@@ -12,16 +12,16 @@ from ..models.misconception_detector import MisconceptionDetector
 
 logger = logging.getLogger(__name__)
 
-# Try to import OpenAI components
+# Try to import Claude components
 try:
-    from ..openai.client import OpenAIClient
-    from ..openai.cache import OpenAICache
-    from ..openai.prompts import get_misconception_remediation_prompt
-    OPENAI_AVAILABLE = True
+    from ..claude.client import ClaudeClient
+    from ..claude.cache import ClaudeCache
+    from ..claude.prompts import get_misconception_remediation_prompt
+    CLAUDE_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAIClient = None
-    OpenAICache = None
+    CLAUDE_AVAILABLE = False
+    ClaudeClient = None
+    ClaudeCache = None
     get_misconception_remediation_prompt = None
 
 
@@ -48,31 +48,31 @@ class MisconceptionAnalyzer:
         self.misconception_detector = misconception_detector
         self.graph_query = knowledge_graph_query
         
-        # Initialize OpenAI support if available
-        self._openai_enabled = False
-        self._openai_client = None
-        self._openai_cache = None
+        # Initialize Claude support if available
+        self._claude_enabled = False
+        self._claude_client = None
+        self._claude_cache = None
         
-        if OPENAI_AVAILABLE:
+        if CLAUDE_AVAILABLE:
             try:
-                openai_config = self.config.get('openai', {})
-                if openai_config.get('use_openai_misconceptions', False):
-                    self._openai_client = OpenAIClient(
-                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=openai_config.get('timeout', 30),
-                        max_retries=openai_config.get('max_retries', 3)
+                claude_config = self.config.get('claude', {})
+                if claude_config.get('use_claude_misconceptions', False):
+                    self._claude_client = ClaudeClient(
+                        api_url=claude_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=claude_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=claude_config.get('timeout', 30),
+                        max_retries=claude_config.get('max_retries', 3)
                     )
                     
-                    if self._openai_client.is_available():
-                        self._openai_enabled = True
-                        self._openai_cache = OpenAICache(
-                            max_size=openai_config.get('cache_max_size', 1000),
-                            ttl=openai_config.get('cache_ttl', 3600)
+                    if self._claude_client.is_available():
+                        self._claude_enabled = True
+                        self._claude_cache = ClaudeCache(
+                            max_size=claude_config.get('cache_max_size', 1000),
+                            ttl=claude_config.get('cache_ttl', 3600)
                         )
-                        logger.info("OpenAI misconception remediation enabled")
+                        logger.info("Claude misconception remediation enabled")
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI misconception remediation: {e}")
+                logger.warning(f"Failed to initialize Claude misconception remediation: {e}")
     
     def analyze_student_misconceptions(
         self,
@@ -186,8 +186,8 @@ class MisconceptionAnalyzer:
         Returns:
             Dictionary with remediation recommendations
         """
-        # Try OpenAI first if enabled
-        if self._openai_enabled and get_misconception_remediation_prompt:
+        # Try Claude first if enabled
+        if self._claude_enabled and get_misconception_remediation_prompt:
             try:
                 # Collect misconception data
                 misconception_data = []
@@ -202,7 +202,7 @@ class MisconceptionAnalyzer:
                 
                 if misconception_data:
                     prompt = get_misconception_remediation_prompt(misconception_data)
-                    response = self._openai_client.generate(
+                    response = self._claude_client.generate(
                         prompt,
                         max_tokens=512,
                         temperature=0.7
@@ -214,21 +214,21 @@ class MisconceptionAnalyzer:
                             json_end = response.rfind('}') + 1
                             if json_start >= 0 and json_end > json_start:
                                 json_str = response[json_start:json_end]
-                                openai_remediation = json.loads(json_str)
+                                claude_remediation = json.loads(json_str)
                                 
                                 # Ensure same structure
                                 remediation = {
-                                    'questions_to_review': openai_remediation.get('questions_to_review', []),
-                                    'prerequisites_to_review': openai_remediation.get('prerequisites_to_review', []),
-                                    'concepts_to_clarify': openai_remediation.get('concepts_to_clarify', [])
+                                    'questions_to_review': claude_remediation.get('questions_to_review', []),
+                                    'prerequisites_to_review': claude_remediation.get('prerequisites_to_review', []),
+                                    'concepts_to_clarify': claude_remediation.get('concepts_to_clarify', [])
                                 }
                                 
                                 if remediation['questions_to_review'] or remediation['concepts_to_clarify']:
                                     return remediation
                         except json.JSONDecodeError:
-                            logger.warning("Failed to parse OpenAI remediation, using fallback")
+                            logger.warning("Failed to parse Claude remediation, using fallback")
             except Exception as e:
-                logger.warning(f"OpenAI remediation recommendation failed: {e}, using fallback")
+                logger.warning(f"Claude remediation recommendation failed: {e}, using fallback")
         
         # Fallback to existing implementation
         remediation = {

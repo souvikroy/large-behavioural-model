@@ -123,7 +123,7 @@ The system follows a modular, service-oriented architecture with clear separatio
 │                                                                  │
 │  ┌──────────────────┐  ┌──────────────────────────────────┐  │
 │  │ Training        │  │ External Services                 │  │
-│  │ - Pipeline      │  │ - OpenAI Client (optional)         │  │
+│  │ - Pipeline      │  │ - Claude Client (optional)        │  │
 │  │ - Evaluator     │  │ - Model Exporter                  │  │
 │  └──────────────────┘  └──────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
@@ -134,7 +134,7 @@ The system follows a modular, service-oriented architecture with clear separatio
 Services are initialized in dependency order:
 
 1. **Foundation Services** (no dependencies):
-   - `openai_client` - Optional OpenAI integration
+   - `claude_client` - Optional Claude integration
    - `data_loader` - Loads raw data
    - `misconception_detector` - Detects misconceptions
    - `competency_predictor` - ML model for predictions

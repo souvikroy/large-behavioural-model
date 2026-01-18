@@ -14,16 +14,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Try to import OpenAI components
+# Try to import Claude components
 try:
-    from ..openai.client import OpenAIClient
-    from ..openai.cache import OpenAICache
-    from ..openai.prompts import get_concept_extraction_prompt
-    OPENAI_AVAILABLE = True
+    from ..claude.client import ClaudeClient
+    from ..claude.cache import ClaudeCache
+    from ..claude.prompts import get_concept_extraction_prompt
+    CLAUDE_AVAILABLE = True
 except ImportError:
-    OPENAI_AVAILABLE = False
-    OpenAIClient = None
-    OpenAICache = None
+    CLAUDE_AVAILABLE = False
+    ClaudeClient = None
+    ClaudeCache = None
     get_concept_extraction_prompt = None
 
 # Download required NLTK data
@@ -60,40 +60,40 @@ class ConceptExtractor:
             nltk.download('stopwords', quiet=True)
             self.stop_words = set(stopwords.words('english'))
         
-        # Initialize OpenAI support if available
-        self._openai_enabled = False
-        self._openai_client = None
-        self._openai_cache = None
+        # Initialize Claude support if available
+        self._claude_enabled = False
+        self._claude_client = None
+        self._claude_cache = None
         
-        if OPENAI_AVAILABLE:
+        if CLAUDE_AVAILABLE:
             try:
                 with open(config_path, 'r') as f:
                     config = yaml.safe_load(f)
                 
-                openai_config = config.get('openai', {})
-                if openai_config.get('use_openai_concepts', False):
-                    self._openai_client = OpenAIClient(
-                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=openai_config.get('timeout', 30),
-                        max_retries=openai_config.get('max_retries', 3)
+                claude_config = config.get('claude', {})
+                if claude_config.get('use_claude_concepts', False):
+                    self._claude_client = ClaudeClient(
+                        api_url=claude_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=claude_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=claude_config.get('timeout', 30),
+                        max_retries=claude_config.get('max_retries', 3)
                     )
                     
-                    if self._openai_client.is_available():
-                        self._openai_enabled = True
-                        self._openai_cache = OpenAICache(
-                            max_size=openai_config.get('cache_max_size', 1000),
-                            ttl=openai_config.get('cache_ttl', 3600)
+                    if self._claude_client.is_available():
+                        self._claude_enabled = True
+                        self._claude_cache = ClaudeCache(
+                            max_size=claude_config.get('cache_max_size', 1000),
+                            ttl=claude_config.get('cache_ttl', 3600)
                         )
-                        logger.info("OpenAI concept extraction enabled")
+                        logger.info("Claude concept extraction enabled")
                     else:
-                        logger.info("OpenAI API not available, using local concept extraction")
+                        logger.info("Claude API not available, using local concept extraction")
             except Exception as e:
-                logger.warning(f"Failed to initialize OpenAI concept extraction: {e}, using local extraction")
+                logger.warning(f"Failed to initialize Claude concept extraction: {e}, using local extraction")
     
-    def _openai_extract_concepts(self, text: str) -> Optional[Set[str]]:
+    def _claude_extract_concepts(self, text: str) -> Optional[Set[str]]:
         """
-        Extract concepts using OpenAI API (internal method).
+        Extract concepts using Claude API (internal method).
         
         Args:
             text: Input text
@@ -101,19 +101,19 @@ class ConceptExtractor:
         Returns:
             Set of concepts or None if failed
         """
-        if not self._openai_enabled or not self._openai_client or not get_concept_extraction_prompt:
+        if not self._claude_enabled or not self._claude_client or not get_concept_extraction_prompt:
             return None
         
         # Check cache first
-        if self._openai_cache:
+        if self._claude_cache:
             cache_key = f"concepts:{text}"
-            cached = self._openai_cache.get(cache_key)
+            cached = self._claude_cache.get(cache_key)
             if cached is not None:
                 return set(cached)
         
         try:
             prompt = get_concept_extraction_prompt(text)
-            response = self._openai_client.generate(
+            response = self._claude_client.generate(
                 prompt,
                 max_tokens=256,
                 temperature=0.3
@@ -131,9 +131,9 @@ class ConceptExtractor:
                         concepts = set(concepts_list)
                         
                         # Cache result
-                        if self._openai_cache:
+                        if self._claude_cache:
                             cache_key = f"concepts:{text}"
-                            self._openai_cache.set(cache_key, list(concepts))
+                            self._claude_cache.set(cache_key, list(concepts))
                         
                         return concepts
                 except json.JSONDecodeError:
@@ -152,13 +152,13 @@ class ConceptExtractor:
                     
                     if concepts:
                         # Cache result
-                        if self._openai_cache:
+                        if self._claude_cache:
                             cache_key = f"concepts:{text}"
-                            self._openai_cache.set(cache_key, list(concepts))
+                            self._claude_cache.set(cache_key, list(concepts))
                         
                         return concepts
         except Exception as e:
-            logger.warning(f"OpenAI concept extraction failed: {e}")
+            logger.warning(f"Claude concept extraction failed: {e}")
         
         return None
     
@@ -238,14 +238,14 @@ class ConceptExtractor:
         Returns:
             Set of extracted concepts
         """
-        # Try OpenAI first if enabled
-        if self._openai_enabled:
+        # Try Claude first if enabled
+        if self._claude_enabled:
             try:
-                openai_concepts = self._openai_extract_concepts(text)
-                if openai_concepts is not None and len(openai_concepts) > 0:
-                    return openai_concepts
+                claude_concepts = self._claude_extract_concepts(text)
+                if claude_concepts is not None and len(claude_concepts) > 0:
+                    return claude_concepts
             except Exception as e:
-                logger.warning(f"OpenAI concept extraction failed, falling back to local: {e}")
+                logger.warning(f"Claude concept extraction failed, falling back to local: {e}")
         
         # Fallback to local extraction (existing implementation)
         concepts = set()
@@ -270,6 +270,6 @@ class ConceptExtractor:
         Returns:
             List of concept sets
         """
-        # If OpenAI enabled, can batch process, but for now use individual calls
+        # If Claude enabled, can batch process, but for now use individual calls
         # to maintain same interface
         return [self.extract_concepts(text) for text in texts]

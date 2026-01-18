@@ -1,4 +1,4 @@
-"""OpenAI client for LM Studio API integration."""
+"""Claude client for LM Studio API integration."""
 
 import requests
 import json
@@ -10,7 +10,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-class OpenAIClient:
+class ClaudeClient:
     """Client for interacting with LM Studio API."""
     
     def __init__(
@@ -21,7 +21,7 @@ class OpenAIClient:
         max_retries: int = 3
     ):
         """
-        Initialize OpenAI client.
+        Initialize Claude client.
         
         Args:
             api_url: Base URL for LM Studio API
@@ -37,7 +37,7 @@ class OpenAIClient:
         self._check_availability()
     
     def _check_availability(self):
-        """Check if OpenAI API is available."""
+        """Check if Claude API is available."""
         try:
             response = requests.get(
                 f"{self.api_url}/v1/models",
@@ -45,11 +45,11 @@ class OpenAIClient:
             )
             if response.status_code == 200:
                 self.available = True
-                logger.info(f"OpenAI API available at {self.api_url}")
+                logger.info(f"Claude API available at {self.api_url}")
             else:
-                logger.warning(f"OpenAI API returned status {response.status_code}")
+                logger.warning(f"Claude API returned status {response.status_code}")
         except Exception as e:
-            logger.warning(f"OpenAI API not available: {e}")
+            logger.warning(f"Claude API not available: {e}")
             self.available = False
     
     def _make_request(
@@ -242,5 +242,5 @@ class OpenAIClient:
         return results
     
     def is_available(self) -> bool:
-        """Check if OpenAI API is available."""
+        """Check if Claude API is available."""
         return self.available
