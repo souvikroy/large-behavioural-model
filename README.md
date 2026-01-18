@@ -902,13 +902,6 @@ See `notebooks/` directory for Jupyter notebooks with detailed examples:
 pytest tests/
 ```
 
-## License
-
-MIT
-
-## Citation
-
-If you use this system in your research, please cite:
 
 ```
 Behavioral Model for Adaptive Learning System
