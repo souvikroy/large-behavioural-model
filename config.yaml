@@ -1,0 +1,118 @@
+# Configuration file for Behavioral Model for Adaptive Learning
+
+data:
+  input_file: "question-response.json"
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  random_seed: 42
+
+preprocessing:
+  min_competency_threshold: 0.3
+  max_competency_threshold: 0.7
+  normalize_3pl: true
+  handle_missing: "drop"
+
+nlp:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  batch_size: 32
+  max_length: 512
+  misconception_keywords:
+    - "cannot"
+    - "incorrect"
+    - "wrong"
+    - "mistake"
+    - "error"
+    - "identify the mistake"
+    - "find the error"
+
+knowledge_graph:
+  framework: "networkx"  # or "neo4j"
+  embedding_model: "node2vec"
+  embedding_dim: 128
+  walk_length: 30
+  num_walks: 200
+  window_size: 10
+  min_prerequisite_confidence: 0.6
+
+models:
+  competency_predictor:
+    algorithm: "ensemble"  # "xgboost", "lightgbm", "neural_network", "ensemble"
+    xgboost_params:
+      n_estimators: 100
+      max_depth: 6
+      learning_rate: 0.1
+    lightgbm_params:
+      n_estimators: 100
+      max_depth: 6
+      learning_rate: 0.1
+    neural_network:
+      hidden_layers: [256, 128, 64]
+      dropout: 0.3
+      activation: "relu"
+  
+  difficulty_calibrator:
+    algorithm: "random_forest"
+    n_estimators: 100
+    max_depth: 10
+  
+  question_recommender:
+    top_k: 10
+    use_graph_filtering: true
+    use_content_filtering: true
+    use_collaborative_filtering: false
+  
+  learning_path:
+    max_path_length: 20
+    respect_prerequisites: true
+    avoid_misconceptions: true
+
+training:
+  cross_validation:
+    n_splits: 5
+    shuffle: true
+  hyperparameter_tuning:
+    n_trials: 50
+    timeout: 3600
+  evaluation_metrics:
+    - "rmse"
+    - "mae"
+    - "r2"
+    - "precision@k"
+    - "recall@k"
+    - "ndcg"
+
+api:
+  host: "0.0.0.0"
+  port: 9010
+  reload: false
+  workers: 1
+
+export:
+  model_format: ["pickle", "onnx"]
+  graph_format: ["pickle", "graphml", "json"]
+  include_metadata: true
+
+paths:
+  models_dir: "models"
+  graphs_dir: "knowledge_graphs"
+  notebooks_dir: "notebooks"
+  logs_dir: "logs"
+
+orchestrator:
+  enable_caching: true
+  cache_ttl: 3600
+  parallel_initialization: true
+  health_check_interval: 60
+
+llm:
+  api_url: "http://192.168.0.4:1601"
+  model: "qwen/qwen3-4b-thinking-2507"
+  timeout: 30
+  max_retries: 3
+  batch_size: 50
+  use_llm_embeddings: true
+  use_llm_concepts: true
+  use_llm_misconceptions: true
+  cache_max_size: 1000
+  cache_ttl: 3600

@@ -1,0 +1,60 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Logs (will be mounted as volume)
+logs/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Model files (will be mounted as volume, but exclude from build)
+# models/*.pkl
+# models/*.onnx
+
+# Knowledge graphs (will be mounted as volume)
+# knowledge_graphs/*.pkl
+# knowledge_graphs/*.graphml
+# knowledge_graphs/*.json
