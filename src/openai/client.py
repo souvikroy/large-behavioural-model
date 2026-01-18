@@ -1,4 +1,4 @@
-"""LLM client for LM Studio API integration."""
+"""OpenAI client for LM Studio API integration."""
 
 import requests
 import json
@@ -10,7 +10,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-class LLMClient:
+class OpenAIClient:
     """Client for interacting with LM Studio API."""
     
     def __init__(
@@ -21,7 +21,7 @@ class LLMClient:
         max_retries: int = 3
     ):
         """
-        Initialize LLM client.
+        Initialize OpenAI client.
         
         Args:
             api_url: Base URL for LM Studio API
@@ -37,7 +37,7 @@ class LLMClient:
         self._check_availability()
     
     def _check_availability(self):
-        """Check if LLM API is available."""
+        """Check if OpenAI API is available."""
         try:
             response = requests.get(
                 f"{self.api_url}/v1/models",
@@ -45,11 +45,11 @@ class LLMClient:
             )
             if response.status_code == 200:
                 self.available = True
-                logger.info(f"LLM API available at {self.api_url}")
+                logger.info(f"OpenAI API available at {self.api_url}")
             else:
-                logger.warning(f"LLM API returned status {response.status_code}")
+                logger.warning(f"OpenAI API returned status {response.status_code}")
         except Exception as e:
-            logger.warning(f"LLM API not available: {e}")
+            logger.warning(f"OpenAI API not available: {e}")
             self.available = False
     
     def _make_request(
@@ -242,5 +242,5 @@ class LLMClient:
         return results
     
     def is_available(self) -> bool:
-        """Check if LLM API is available."""
+        """Check if OpenAI API is available."""
         return self.available

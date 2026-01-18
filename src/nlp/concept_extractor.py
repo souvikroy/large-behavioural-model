@@ -14,16 +14,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Try to import LLM components
+# Try to import OpenAI components
 try:
-    from ..llm.client import LLMClient
-    from ..llm.cache import LLMCache
-    from ..llm.prompts import get_concept_extraction_prompt
-    LLM_AVAILABLE = True
+    from ..openai.client import OpenAIClient
+    from ..openai.cache import OpenAICache
+    from ..openai.prompts import get_concept_extraction_prompt
+    OPENAI_AVAILABLE = True
 except ImportError:
-    LLM_AVAILABLE = False
-    LLMClient = None
-    LLMCache = None
+    OPENAI_AVAILABLE = False
+    OpenAIClient = None
+    OpenAICache = None
     get_concept_extraction_prompt = None
 
 # Download required NLTK data
@@ -60,40 +60,40 @@ class ConceptExtractor:
             nltk.download('stopwords', quiet=True)
             self.stop_words = set(stopwords.words('english'))
         
-        # Initialize LLM support if available
-        self._llm_enabled = False
-        self._llm_client = None
-        self._llm_cache = None
+        # Initialize OpenAI support if available
+        self._openai_enabled = False
+        self._openai_client = None
+        self._openai_cache = None
         
-        if LLM_AVAILABLE:
+        if OPENAI_AVAILABLE:
             try:
                 with open(config_path, 'r') as f:
                     config = yaml.safe_load(f)
                 
-                llm_config = config.get('llm', {})
-                if llm_config.get('use_llm_concepts', False):
-                    self._llm_client = LLMClient(
-                        api_url=llm_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=llm_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=llm_config.get('timeout', 30),
-                        max_retries=llm_config.get('max_retries', 3)
+                openai_config = config.get('openai', {})
+                if openai_config.get('use_openai_concepts', False):
+                    self._openai_client = OpenAIClient(
+                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=openai_config.get('timeout', 30),
+                        max_retries=openai_config.get('max_retries', 3)
                     )
                     
-                    if self._llm_client.is_available():
-                        self._llm_enabled = True
-                        self._llm_cache = LLMCache(
-                            max_size=llm_config.get('cache_max_size', 1000),
-                            ttl=llm_config.get('cache_ttl', 3600)
+                    if self._openai_client.is_available():
+                        self._openai_enabled = True
+                        self._openai_cache = OpenAICache(
+                            max_size=openai_config.get('cache_max_size', 1000),
+                            ttl=openai_config.get('cache_ttl', 3600)
                         )
-                        logger.info("LLM concept extraction enabled")
+                        logger.info("OpenAI concept extraction enabled")
                     else:
-                        logger.info("LLM API not available, using local concept extraction")
+                        logger.info("OpenAI API not available, using local concept extraction")
             except Exception as e:
-                logger.warning(f"Failed to initialize LLM concept extraction: {e}, using local extraction")
+                logger.warning(f"Failed to initialize OpenAI concept extraction: {e}, using local extraction")
     
-    def _llm_extract_concepts(self, text: str) -> Optional[Set[str]]:
+    def _openai_extract_concepts(self, text: str) -> Optional[Set[str]]:
         """
-        Extract concepts using LLM API (internal method).
+        Extract concepts using OpenAI API (internal method).
         
         Args:
             text: Input text
@@ -101,19 +101,19 @@ class ConceptExtractor:
         Returns:
             Set of concepts or None if failed
         """
-        if not self._llm_enabled or not self._llm_client or not get_concept_extraction_prompt:
+        if not self._openai_enabled or not self._openai_client or not get_concept_extraction_prompt:
             return None
         
         # Check cache first
-        if self._llm_cache:
+        if self._openai_cache:
             cache_key = f"concepts:{text}"
-            cached = self._llm_cache.get(cache_key)
+            cached = self._openai_cache.get(cache_key)
             if cached is not None:
                 return set(cached)
         
         try:
             prompt = get_concept_extraction_prompt(text)
-            response = self._llm_client.generate(
+            response = self._openai_client.generate(
                 prompt,
                 max_tokens=256,
                 temperature=0.3
@@ -131,9 +131,9 @@ class ConceptExtractor:
                         concepts = set(concepts_list)
                         
                         # Cache result
-                        if self._llm_cache:
+                        if self._openai_cache:
                             cache_key = f"concepts:{text}"
-                            self._llm_cache.set(cache_key, list(concepts))
+                            self._openai_cache.set(cache_key, list(concepts))
                         
                         return concepts
                 except json.JSONDecodeError:
@@ -152,13 +152,13 @@ class ConceptExtractor:
                     
                     if concepts:
                         # Cache result
-                        if self._llm_cache:
+                        if self._openai_cache:
                             cache_key = f"concepts:{text}"
-                            self._llm_cache.set(cache_key, list(concepts))
+                            self._openai_cache.set(cache_key, list(concepts))
                         
                         return concepts
         except Exception as e:
-            logger.warning(f"LLM concept extraction failed: {e}")
+            logger.warning(f"OpenAI concept extraction failed: {e}")
         
         return None
     
@@ -238,14 +238,14 @@ class ConceptExtractor:
         Returns:
             Set of extracted concepts
         """
-        # Try LLM first if enabled
-        if self._llm_enabled:
+        # Try OpenAI first if enabled
+        if self._openai_enabled:
             try:
-                llm_concepts = self._llm_extract_concepts(text)
-                if llm_concepts is not None and len(llm_concepts) > 0:
-                    return llm_concepts
+                openai_concepts = self._openai_extract_concepts(text)
+                if openai_concepts is not None and len(openai_concepts) > 0:
+                    return openai_concepts
             except Exception as e:
-                logger.warning(f"LLM concept extraction failed, falling back to local: {e}")
+                logger.warning(f"OpenAI concept extraction failed, falling back to local: {e}")
         
         # Fallback to local extraction (existing implementation)
         concepts = set()
@@ -270,6 +270,6 @@ class ConceptExtractor:
         Returns:
             List of concept sets
         """
-        # If LLM enabled, can batch process, but for now use individual calls
+        # If OpenAI enabled, can batch process, but for now use individual calls
         # to maintain same interface
         return [self.extract_concepts(text) for text in texts]

@@ -123,7 +123,7 @@ The system follows a modular, service-oriented architecture with clear separatio
 │                                                                  │
 │  ┌──────────────────┐  ┌──────────────────────────────────┐  │
 │  │ Training        │  │ External Services                 │  │
-│  │ - Pipeline      │  │ - LLM Client (optional)           │  │
+│  │ - Pipeline      │  │ - OpenAI Client (optional)         │  │
 │  │ - Evaluator     │  │ - Model Exporter                  │  │
 │  └──────────────────┘  └──────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
@@ -134,7 +134,7 @@ The system follows a modular, service-oriented architecture with clear separatio
 Services are initialized in dependency order:
 
 1. **Foundation Services** (no dependencies):
-   - `llm_client` - Optional LLM integration
+   - `openai_client` - Optional OpenAI integration
    - `data_loader` - Loads raw data
    - `misconception_detector` - Detects misconceptions
    - `competency_predictor` - ML model for predictions
@@ -902,13 +902,6 @@ See `notebooks/` directory for Jupyter notebooks with detailed examples:
 pytest tests/
 ```
 
-## License
-
-MIT
-
-## Citation
-
-If you use this system in your research, please cite:
 
 ```
 Behavioral Model for Adaptive Learning System

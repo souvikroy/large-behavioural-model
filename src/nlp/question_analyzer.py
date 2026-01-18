@@ -21,16 +21,16 @@ from .concept_extractor import ConceptExtractor
 
 logger = logging.getLogger(__name__)
 
-# Try to import LLM components
+# Try to import OpenAI components
 try:
-    from ..llm.client import LLMClient
-    from ..llm.cache import LLMCache
-    from ..llm.prompts import get_misconception_detection_prompt
-    LLM_AVAILABLE = True
+    from ..openai.client import OpenAIClient
+    from ..openai.cache import OpenAICache
+    from ..openai.prompts import get_misconception_detection_prompt
+    OPENAI_AVAILABLE = True
 except ImportError:
-    LLM_AVAILABLE = False
-    LLMClient = None
-    LLMCache = None
+    OPENAI_AVAILABLE = False
+    OpenAIClient = None
+    OpenAICache = None
     get_misconception_detection_prompt = None
 
 
@@ -57,37 +57,37 @@ class QuestionAnalyzer:
             ['cannot', 'incorrect', 'wrong', 'mistake', 'error', 'identify the mistake', 'find the error']
         )
         
-        # Initialize LLM support if available
-        self._llm_enabled = False
-        self._llm_client = None
-        self._llm_cache = None
+        # Initialize OpenAI support if available
+        self._openai_enabled = False
+        self._openai_client = None
+        self._openai_cache = None
         
-        if LLM_AVAILABLE:
+        if OPENAI_AVAILABLE:
             try:
                 with open(config_path, 'r') as f:
-                    llm_config = yaml.safe_load(f).get('llm', {})
+                    openai_config = yaml.safe_load(f).get('openai', {})
                 
-                if llm_config.get('use_llm_misconceptions', False):
-                    self._llm_client = LLMClient(
-                        api_url=llm_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=llm_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=llm_config.get('timeout', 30),
-                        max_retries=llm_config.get('max_retries', 3)
+                if openai_config.get('use_openai_misconceptions', False):
+                    self._openai_client = OpenAIClient(
+                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=openai_config.get('timeout', 30),
+                        max_retries=openai_config.get('max_retries', 3)
                     )
                     
-                    if self._llm_client.is_available():
-                        self._llm_enabled = True
-                        self._llm_cache = LLMCache(
-                            max_size=llm_config.get('cache_max_size', 1000),
-                            ttl=llm_config.get('cache_ttl', 3600)
+                    if self._openai_client.is_available():
+                        self._openai_enabled = True
+                        self._openai_cache = OpenAICache(
+                            max_size=openai_config.get('cache_max_size', 1000),
+                            ttl=openai_config.get('cache_ttl', 3600)
                         )
-                        logger.info("LLM misconception detection enabled")
+                        logger.info("OpenAI misconception detection enabled")
             except Exception as e:
-                logger.warning(f"Failed to initialize LLM misconception detection: {e}")
+                logger.warning(f"Failed to initialize OpenAI misconception detection: {e}")
     
-    def _llm_detect_indicators(self, question_text: str) -> Optional[Dict[str, bool]]:
+    def _openai_detect_indicators(self, question_text: str) -> Optional[Dict[str, bool]]:
         """
-        Detect misconception indicators using LLM API (internal method).
+        Detect misconception indicators using OpenAI API (internal method).
         
         Args:
             question_text: Question text to analyze
@@ -95,19 +95,19 @@ class QuestionAnalyzer:
         Returns:
             Dictionary of indicator flags or None if failed
         """
-        if not self._llm_enabled or not self._llm_client or not get_misconception_detection_prompt:
+        if not self._openai_enabled or not self._openai_client or not get_misconception_detection_prompt:
             return None
         
         # Check cache first
-        if self._llm_cache:
+        if self._openai_cache:
             cache_key = f"misconception:{question_text}"
-            cached = self._llm_cache.get(cache_key)
+            cached = self._openai_cache.get(cache_key)
             if cached is not None:
                 return cached
         
         try:
             prompt = get_misconception_detection_prompt(question_text)
-            response = self._llm_client.generate(
+            response = self._openai_client.generate(
                 prompt,
                 max_tokens=256,
                 temperature=0.3
@@ -135,15 +135,15 @@ class QuestionAnalyzer:
                         indicators['compares_approaches'] = 'compare' in question_text.lower() or 'difference' in question_text.lower()
                         
                         # Cache result
-                        if self._llm_cache:
+                        if self._openai_cache:
                             cache_key = f"misconception:{question_text}"
-                            self._llm_cache.set(cache_key, indicators)
+                            self._openai_cache.set(cache_key, indicators)
                         
                         return indicators
                 except json.JSONDecodeError:
                     pass
         except Exception as e:
-            logger.warning(f"LLM misconception detection failed: {e}")
+            logger.warning(f"OpenAI misconception detection failed: {e}")
         
         return None
     
@@ -157,14 +157,14 @@ class QuestionAnalyzer:
         Returns:
             Dictionary of indicator flags
         """
-        # Try LLM first if enabled
-        if self._llm_enabled:
+        # Try OpenAI first if enabled
+        if self._openai_enabled:
             try:
-                llm_indicators = self._llm_detect_indicators(question_text)
-                if llm_indicators is not None:
-                    return llm_indicators
+                openai_indicators = self._openai_detect_indicators(question_text)
+                if openai_indicators is not None:
+                    return openai_indicators
             except Exception as e:
-                logger.warning(f"LLM misconception detection failed, falling back to keyword matching: {e}")
+                logger.warning(f"OpenAI misconception detection failed, falling back to keyword matching: {e}")
         
         # Fallback to keyword-based detection (existing implementation)
         text_lower = str(question_text).lower()

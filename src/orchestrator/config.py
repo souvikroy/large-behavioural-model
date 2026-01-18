@@ -22,7 +22,7 @@ class OrchestratorConfig:
         
         # Service dependency definitions
         self.service_dependencies = {
-            'llm_client': [],  # LLM client can be initialized early
+            'openai_client': [],  # OpenAI client can be initialized early
             'data_loader': [],
             'data_preprocessor': ['data_loader'],
             'feature_engineer': ['data_preprocessor'],

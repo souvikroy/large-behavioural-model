@@ -24,13 +24,13 @@ from ..training.pipeline import TrainingPipeline
 from ..training.evaluator import ModelEvaluator
 from ..export.model_exporter import ModelExporter
 
-# Try to import LLM client
+# Try to import OpenAI client
 try:
-    from ..llm.client import LLMClient
-    LLM_AVAILABLE = True
+    from ..openai.client import OpenAIClient
+    OPENAI_AVAILABLE = True
 except ImportError:
-    LLM_AVAILABLE = False
-    LLMClient = None
+    OPENAI_AVAILABLE = False
+    OpenAIClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -99,30 +99,30 @@ class ServiceManager:
             service_name: Name of the service to initialize
             data_path: Optional path to data file
         """
-        if service_name == 'llm_client':
-            # Initialize LLM client if available
-            if LLM_AVAILABLE:
+        if service_name == 'openai_client':
+            # Initialize OpenAI client if available
+            if OPENAI_AVAILABLE:
                 try:
                     with open(self.config_path, 'r') as f:
                         config = yaml.safe_load(f)
-                    llm_config = config.get('llm', {})
+                    openai_config = config.get('openai', {})
                     
-                    llm_client = LLMClient(
-                        api_url=llm_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=llm_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=llm_config.get('timeout', 30),
-                        max_retries=llm_config.get('max_retries', 3)
+                    openai_client = OpenAIClient(
+                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=openai_config.get('timeout', 30),
+                        max_retries=openai_config.get('max_retries', 3)
                     )
                     
-                    if llm_client.is_available():
-                        self.services['llm_client'] = llm_client
-                        logger.info("LLM client initialized successfully")
+                    if openai_client.is_available():
+                        self.services['openai_client'] = openai_client
+                        logger.info("OpenAI client initialized successfully")
                     else:
-                        logger.info("LLM client not available, services will use local processing")
+                        logger.info("OpenAI client not available, services will use local processing")
                 except Exception as e:
-                    logger.warning(f"Failed to initialize LLM client: {e}")
+                    logger.warning(f"Failed to initialize OpenAI client: {e}")
             else:
-                logger.info("LLM module not available")
+                logger.info("OpenAI module not available")
         
         elif service_name == 'data_loader':
             if data_path is None:

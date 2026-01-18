@@ -105,14 +105,14 @@ orchestrator:
   parallel_initialization: true
   health_check_interval: 60
 
-llm:
+openai:
   api_url: "http://192.168.0.4:1601"
   model: "qwen/qwen3-4b-thinking-2507"
   timeout: 30
   max_retries: 3
   batch_size: 50
-  use_llm_embeddings: true
-  use_llm_concepts: true
-  use_llm_misconceptions: true
+  use_openai_embeddings: true
+  use_openai_concepts: true
+  use_openai_misconceptions: true
   cache_max_size: 1000
   cache_ttl: 3600

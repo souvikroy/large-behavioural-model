@@ -1,4 +1,4 @@
-"""Caching layer for LLM responses."""
+"""Caching layer for OpenAI responses."""
 
 import hashlib
 import time
@@ -9,12 +9,12 @@ from collections import OrderedDict
 logger = logging.getLogger(__name__)
 
 
-class LLMCache:
-    """LRU cache for LLM responses with TTL."""
+class OpenAICache:
+    """LRU cache for OpenAI responses with TTL."""
     
     def __init__(self, max_size: int = 1000, ttl: int = 3600):
         """
-        Initialize LLM cache.
+        Initialize OpenAI cache.
         
         Args:
             max_size: Maximum number of cached items

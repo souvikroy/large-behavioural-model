@@ -12,16 +12,16 @@ from ..knowledge_graph.query import KnowledgeGraphQuery
 
 logger = logging.getLogger(__name__)
 
-# Try to import LLM components
+# Try to import OpenAI components
 try:
-    from ..llm.client import LLMClient
-    from ..llm.cache import LLMCache
-    from ..llm.prompts import get_gap_analysis_prompt
-    LLM_AVAILABLE = True
+    from ..openai.client import OpenAIClient
+    from ..openai.cache import OpenAICache
+    from ..openai.prompts import get_gap_analysis_prompt
+    OPENAI_AVAILABLE = True
 except ImportError:
-    LLM_AVAILABLE = False
-    LLMClient = None
-    LLMCache = None
+    OPENAI_AVAILABLE = False
+    OpenAIClient = None
+    OpenAICache = None
     get_gap_analysis_prompt = None
 
 
@@ -48,31 +48,31 @@ class GapAnalyzer:
         self.competency_predictor = competency_predictor
         self.graph_query = knowledge_graph_query
         
-        # Initialize LLM support if available
-        self._llm_enabled = False
-        self._llm_client = None
-        self._llm_cache = None
+        # Initialize OpenAI support if available
+        self._openai_enabled = False
+        self._openai_client = None
+        self._openai_cache = None
         
-        if LLM_AVAILABLE:
+        if OPENAI_AVAILABLE:
             try:
-                llm_config = self.config.get('llm', {})
-                if llm_config.get('use_llm_misconceptions', False):  # Reuse same flag
-                    self._llm_client = LLMClient(
-                        api_url=llm_config.get('api_url', 'http://192.168.0.4:1601'),
-                        model=llm_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
-                        timeout=llm_config.get('timeout', 30),
-                        max_retries=llm_config.get('max_retries', 3)
+                openai_config = self.config.get('openai', {})
+                if openai_config.get('use_openai_misconceptions', False):  # Reuse same flag
+                    self._openai_client = OpenAIClient(
+                        api_url=openai_config.get('api_url', 'http://192.168.0.4:1601'),
+                        model=openai_config.get('model', 'qwen/qwen3-4b-thinking-2507'),
+                        timeout=openai_config.get('timeout', 30),
+                        max_retries=openai_config.get('max_retries', 3)
                     )
                     
-                    if self._llm_client.is_available():
-                        self._llm_enabled = True
-                        self._llm_cache = LLMCache(
-                            max_size=llm_config.get('cache_max_size', 1000),
-                            ttl=llm_config.get('cache_ttl', 3600)
+                    if self._openai_client.is_available():
+                        self._openai_enabled = True
+                        self._openai_cache = OpenAICache(
+                            max_size=openai_config.get('cache_max_size', 1000),
+                            ttl=openai_config.get('cache_ttl', 3600)
                         )
-                        logger.info("LLM gap analysis enabled")
+                        logger.info("OpenAI gap analysis enabled")
             except Exception as e:
-                logger.warning(f"Failed to initialize LLM gap analysis: {e}")
+                logger.warning(f"Failed to initialize OpenAI gap analysis: {e}")
     
     def analyze_gaps(
         self,
@@ -257,11 +257,11 @@ class GapAnalyzer:
         Returns:
             Dictionary with remediation strategy
         """
-        # Try LLM first if enabled
-        if self._llm_enabled and get_gap_analysis_prompt:
+        # Try OpenAI first if enabled
+        if self._openai_enabled and get_gap_analysis_prompt:
             try:
                 prompt = get_gap_analysis_prompt(gaps)
-                response = self._llm_client.generate(
+                response = self._openai_client.generate(
                     prompt,
                     max_tokens=512,
                     temperature=0.7
@@ -273,22 +273,22 @@ class GapAnalyzer:
                         json_end = response.rfind('}') + 1
                         if json_start >= 0 and json_end > json_start:
                             json_str = response[json_start:json_end]
-                            llm_strategy = json.loads(json_str)
+                            openai_strategy = json.loads(json_str)
                             
                             # Ensure same structure as existing method
                             strategy = {
-                                'priority_areas': llm_strategy.get('priority_areas', []),
-                                'recommended_actions': llm_strategy.get('recommended_actions', []),
-                                'prerequisite_review': llm_strategy.get('prerequisite_review', [])
+                                'priority_areas': openai_strategy.get('priority_areas', []),
+                                'recommended_actions': openai_strategy.get('recommended_actions', []),
+                                'prerequisite_review': openai_strategy.get('prerequisite_review', [])
                             }
                             
                             # Validate and format to match expected structure
                             if strategy['priority_areas'] or strategy['recommended_actions']:
                                 return strategy
                     except json.JSONDecodeError:
-                        logger.warning("Failed to parse LLM remediation strategy, using fallback")
+                        logger.warning("Failed to parse OpenAI remediation strategy, using fallback")
             except Exception as e:
-                logger.warning(f"LLM remediation strategy generation failed: {e}, using fallback")
+                logger.warning(f"OpenAI remediation strategy generation failed: {e}, using fallback")
         
         # Fallback to existing implementation
         strategy = {
